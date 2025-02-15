@@ -23,6 +23,7 @@ struct BumbleHomeView: View {
                         Divider()
                         , alignment: .bottom
                     )
+                BumbleCardView()
                 Spacer()
             }
             .padding(8)
