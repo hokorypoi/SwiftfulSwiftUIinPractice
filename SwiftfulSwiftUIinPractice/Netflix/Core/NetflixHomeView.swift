@@ -13,6 +13,7 @@ struct NetflixHomeView: View {
     @State private var filters = FilterModel.mockArray
     @State private var selectedFilter: FilterModel? = nil
     @State private var fullHeaderSize: CGSize = .zero
+    @State private var scrollViewOffset: CGFloat = 0
     
     @State private var heroProduct: Product? = nil
     @State private var currentUser: User? = nil
@@ -22,39 +23,12 @@ struct NetflixHomeView: View {
         ZStack(alignment: .top) {
             Color.netflixBlack.ignoresSafeArea()
             
-            ScrollView(.vertical) {
-                VStack(spacing: 8) {
-                    
-                    Rectangle()
-                        .opacity(0)
-                        .frame(height: fullHeaderSize.height)
-                    
-                    if let heroProduct {
-                        heroCell(heroProduct: heroProduct)
-                    }
-                    
-                    categoryRows
-                }
-            }
-            .scrollIndicators(.hidden)
+            backgroundGradientLayer
             
-            VStack(spacing: 0) {
-                header
-                    .padding(.horizontal, 16)
-                
-                NetflixFilterBarView(
-                    filters: filters,
-                    selectedFilter: selectedFilter) { newFilter in
-                        selectedFilter = newFilter
-                    } onXMarkPressed: {
-                        selectedFilter =  nil
-                    }
-                    .padding(.top, 16)
-            }
-            .background(.blue)
-            .readingFrame { frame in
-                fullHeaderSize = frame.size
-            }
+            scrollViewLayer
+            
+            fullHeaderWithFilter
+            
         }
         .foregroundStyle(.netflixWhite)
         .task {
@@ -75,13 +49,76 @@ struct NetflixHomeView: View {
             for brand in allBrands {
                 if let brand {
 //                    let products = self.products.filter({ $0.brand == brand })
-                    rows.append(ProductRow(title: brand.capitalized, products: products))
+                    rows.append(ProductRow(title: brand.capitalized, products: products.shuffled()))
                 }
             }
             productRows = rows
             
         } catch {
             print("Error: \(error)")
+        }
+    }
+    
+    private var backgroundGradientLayer: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    .netflixDarkGray.opacity(1),
+                    .netflixDarkGray.opacity(0),
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+            LinearGradient(
+                colors: [
+                    .netflixDarkRed.opacity(0.5),
+                    .netflixDarkRed.opacity(0),
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+        }
+        .frame(maxHeight: max(10, (400 + scrollViewOffset * 0.75)))
+        .opacity(scrollViewOffset < -250 ? 0 : 1)
+        .animation(.easeInOut, value: scrollViewOffset)
+    }
+    
+    private var fullHeaderWithFilter: some View {
+        VStack(spacing: 0) {
+            header
+                .padding(.horizontal, 16)
+            
+            if scrollViewOffset > -20 {
+                NetflixFilterBarView(
+                    filters: filters,
+                    selectedFilter: selectedFilter) { newFilter in
+                        selectedFilter = newFilter
+                    } onXMarkPressed: {
+                        selectedFilter =  nil
+                    }
+                    .padding(.top, 16)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .padding(.bottom, 8)
+        .background(
+            ZStack {
+                if scrollViewOffset < -70 {
+                    Rectangle()
+                        .fill(Color.clear)
+                        .background(.ultraThinMaterial)
+                        .brightness(-0.2)
+                        .ignoresSafeArea()
+                }
+            }
+        )
+        .animation(.smooth, value: scrollViewOffset)
+        .readingFrame { frame in
+            if fullHeaderSize == .zero {
+                fullHeaderSize = frame.size
+            }
         }
     }
     
@@ -121,6 +158,30 @@ struct NetflixHomeView: View {
             }
         )
         .padding(24)
+    }
+    
+    private var scrollViewLayer: some View {
+        ScrollViewWithOnScrollChanged(
+            .vertical,
+            showsIndicators: false,
+            content: {
+                VStack(spacing: 8) {
+                    
+                    Rectangle()
+                        .opacity(0)
+                        .frame(height: fullHeaderSize.height)
+                    
+                    if let heroProduct {
+                        heroCell(heroProduct: heroProduct)
+                    }
+//                    Text("\(scrollViewOffset)")
+                    categoryRows
+                }
+            },
+            onScrollChanged: { offset in
+                scrollViewOffset = min(0, offset.y)
+            }
+        )
     }
     
     private var categoryRows: some View {
