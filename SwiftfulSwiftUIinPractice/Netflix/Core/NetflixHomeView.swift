@@ -7,8 +7,11 @@
 
 import SwiftUI
 import SwiftfulUI
+import SwiftfulRouting
 
 struct NetflixHomeView: View {
+    
+    @Environment(\.router) var router
     
     @State private var filters = FilterModel.mockArray
     @State private var selectedFilter: FilterModel? = nil
@@ -122,11 +125,20 @@ struct NetflixHomeView: View {
         }
     }
     
+    private func onProductPressed(product: Product) {
+        router.showScreen(.sheet) { _ in
+            NetflixMovieDetailsView(product: product)
+        }
+    }
+    
     private var header: some View {
         HStack(spacing: 0) {
             Text("For You")
                 .font(.title)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .onTapGesture {
+                    router.dismissScreen()
+                }
             HStack(spacing: 16) {
                 Image(systemName: "tv.badge.wifi")
                     .onTapGesture {
@@ -141,17 +153,17 @@ struct NetflixHomeView: View {
         }
     }
     
-    private func heroCell(heroProduct: Product) -> some View {
+    private func heroCell(product: Product) -> some View {
         NetflixHeroCell(
-            imageName: heroProduct.firstImage,
+            imageName: product.firstImage,
             isNetflixFilm: true,
-            title: heroProduct.title,
-            categories: [heroProduct.category?.capitalized ?? "C", heroProduct.brand ?? "B"],
+            title: product.title,
+            categories: [product.category?.capitalized ?? "C", product.brand ?? "B"],
             onBackgroundPressed: {
-                
+                onProductPressed(product: product)
             },
             onPlayPressed: {
-                
+                onProductPressed(product: product)
             },
             onMyListPressed: {
                 
@@ -172,7 +184,7 @@ struct NetflixHomeView: View {
                         .frame(height: fullHeaderSize.height)
                     
                     if let heroProduct {
-                        heroCell(heroProduct: heroProduct)
+                        heroCell(product: heroProduct)
                     }
 //                    Text("\(scrollViewOffset)")
                     categoryRows
@@ -201,6 +213,9 @@ struct NetflixHomeView: View {
                                     isRecentlyAdded: product.recentlyAdded,
                                     topTenRanking: rowIndex == 1 ? (index + 1) : nil
                                 )
+                                .onTapGesture {
+                                    onProductPressed(product: product)
+                                }
                             }
                         }
                         .padding(.horizontal, 16)
@@ -213,5 +228,7 @@ struct NetflixHomeView: View {
 }
 
 #Preview {
-    NetflixHomeView()
+    RouterView { _ in
+        NetflixHomeView()
+    }
 }
